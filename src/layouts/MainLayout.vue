@@ -15,7 +15,7 @@
           EasyLight
         </q-toolbar-title>
 
-        <div>EasyLight v0.0.0</div>
+        <div>v0.0.0</div>
       </q-toolbar>
     </q-header>
 
@@ -29,6 +29,7 @@
         <q-item-label
           header
           class="text-grey-8"
+          @click="leftDrawerOpen=false"
         >
           MENU
         </q-item-label>
