@@ -15,7 +15,9 @@
           EasyLight
         </q-toolbar-title>
 
-        <div>v0.0.0</div>
+        <q-icon v-if="getPage=='pageOne'" size="20px" name="logout" color="white" @click="getPage!='inicio' ? voltarInicio() : ''"/>
+        <q-icon v-else-if="getPage=='bluetooth'" size="20px" name="keyboard_arrow_left" color="white" @click="$store.commit('setPage', 'pageOne')"/>
+        <div v-else>v0.0.0</div>
       </q-toolbar>
     </q-header>
 
@@ -28,16 +30,37 @@
       <q-list>
         <q-item-label
           header
-          class="text-grey-8"
+          class="row flex-center justify-between text-grey-8"
           @click="leftDrawerOpen=false"
         >
-          MENU
+          <strong>MENU</strong>
+          <q-btn flat color="primary" icon="close" />
         </q-item-label>
+        <q-separator color="black"/>
+        <q-item v-show="getPage!='inicio'" clickable @click="$store.commit('setPage', 'bluetooth');leftDrawerOpen=false" >
+          <q-item-section avatar >
+            <q-icon name="bluetooth" color="primary"/>
+          </q-item-section>
+
+          <q-item-section>
+            <q-item-label>Bluetooth</q-item-label>
+          </q-item-section>
+        </q-item>
         <EssentialLink
           v-for="link in essentialLinks"
           :key="link.title"
           v-bind="link"
         />
+        <q-separator color="black" v-show="getPage!='inicio'"/>
+        <q-item v-show="getPage!='inicio'">
+          <q-item-section avatar >
+            <q-icon name="logout" color="primary"/>
+          </q-item-section>
+
+          <q-item-section>
+            <q-item-label>Sair</q-item-label>
+          </q-item-section>
+        </q-item>
       </q-list>
     </q-drawer>
 
@@ -52,22 +75,16 @@ import EssentialLink from 'components/EssentialLink.vue'
 
 const linksData = [
   {
-    title: 'Bluetooth',
-    caption: '',
-    icon: 'bluetooth',
-    link: ''
-  },
-  {
     title: 'Github',
-    caption: 'github.com/quasarframework',
+    caption: 'github.com/jp-turra/EasyLight',
     icon: 'code',
-    link: 'https://github.com/quasarframework'
+    link: 'https://github.com/jp-turra/EasyLight'
   },
   {
-    title: 'Rambo',
+    title: 'Marcos Vinicio Haas Rambo',
     caption: 'Professor orientador',
     icon: 'book',
-    link: ''
+    link: 'http://www.eletrica.ufpr.br/p/professores:rambo:inicial'
   },
   {
     title: 'Sobre',
@@ -84,6 +101,17 @@ export default {
     return {
       leftDrawerOpen: false,
       essentialLinks: linksData
+    }
+  },
+  computed: {
+    getPage () {
+      console.log('teste: ', this.$store.getters.getPage)
+      return this.$store.getters.getPage || 'inicio'
+    }
+  },
+  methods: {
+    voltarInicio () {
+      this.$store.commit('setPage', 'inicio')
     }
   }
 }
