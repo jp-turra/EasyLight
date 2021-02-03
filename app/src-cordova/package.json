@@ -18,7 +18,14 @@
   },
   "cordova": {
     "plugins": {
-      "cordova-plugin-whitelist": {}
-    }
+      "cordova-plugin-whitelist": {},
+      "cordova-plugin-bluetoothclassic-serial": {}
+    },
+    "platforms": [
+      "android"
+    ]
+  },
+  "dependencies": {
+    "cordova-plugin-bluetoothclassic-serial": "^1.0.2"
   }
 }
