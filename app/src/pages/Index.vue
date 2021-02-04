@@ -28,7 +28,7 @@
             <q-icon color="secondary" name="delete" />
           </q-item-section>
         </q-item>
-        <q-btn class="full-width" color="primary" :label="luz.estado ? 'Desligar' : 'Ligar'" @click="acionarLuz" />
+        <q-btn class="full-width" color="primary" :label="luz.estado ? 'Desligar' : 'Ligar'" @click="enviarDado(9)" />
       </q-list>
       <div class="q-mb-xl">
         <q-btn class="full-width" color="green-8" icon="add" label="Adicionar Dispositivo" />
@@ -96,6 +96,13 @@ export default {
     }
   },
   methods: {
+    enviarDado(dado){
+      console.log('dado a ser enviado: ', dado)
+      bluetoothClassicSerial.write("00001101-0000-1000-8000-00805f9b34fb", dado, 
+        ()=>{}, 
+        ()=>{}
+      );
+    },
     conectarDispositivo(device){
       Loading.show({message:'Conectando com dispositivo '+device.name})
       let connected = false
@@ -158,6 +165,7 @@ export default {
     },
     getLuzes () {
       let device = this.$store.getters.getDevice
+      console.log('Device: ', device)
       const aux = { nome: device.name, estado: false, macBluetooth: device.id }
       this.luzes.push(aux)
     },
