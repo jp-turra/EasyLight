@@ -37,7 +37,7 @@
           <q-btn flat color="primary" icon="close" />
         </q-item-label>
         <q-separator color="black"/>
-        <q-item v-show="getPage!='inicio'" clickable @click="$store.commit('setPage', 'bluetooth');leftDrawerOpen=false" >
+        <q-item v-show="getPage!='inicio'" clickable @click="abrirBluetooth()" >
           <q-item-section avatar >
             <q-icon name="bluetooth" color="primary"/>
           </q-item-section>
@@ -71,8 +71,8 @@
 </template>
 
 <script>
+/* eslint-disable */
 import EssentialLink from 'components/EssentialLink.vue'
-
 const linksData = [
   {
     title: 'Github',
@@ -105,11 +105,29 @@ export default {
   },
   computed: {
     getPage () {
-      console.log('teste: ', this.$store.getters.getPage)
       return this.$store.getters.getPage || 'inicio'
     }
   },
   methods: {
+    abrirBluetooth(){
+      this.leftDrawerOpen=false
+      bluetoothClassicSerial.isEnabled (
+        () => { this.$store.commit('setBluetoothState', true) },
+        () => {
+          if (this.$q.platform.is.android){
+            bluetoothClassicSerial.enable(
+              () => { this.$store.commit('setBluetoothState', true) },
+              () => { this.$store.commit('setBluetoothState', false);this.$store.commit('setPage', 'pageOne');return},
+            )
+          }else {
+            alert('Ative o Bluetooth'); 
+            this.$store.commit('setPage', 'pageOne');
+            return
+          }
+        }
+      )
+      this.$store.commit('setPage', 'bluetooth')
+    },
     voltarInicio () {
       this.$store.commit('setPage', 'inicio')
     }

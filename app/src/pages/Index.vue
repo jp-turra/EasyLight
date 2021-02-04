@@ -38,25 +38,26 @@
     <template v-else-if="getPage=='bluetooth'">
       <div class="columns full-width flex-center">
         <div class="q-ma-lg">
-          Estado do Bluetooth: <strong>Ligado</strong>
+          Estado do Bluetooth: <strong>{{getBluetoothState ? 'Ligado' : 'Desligado'}}</strong>
         </div>
         <q-separator class="q-mb-sm" color="black" />
-        <div class="q-ma-md" v-if="dispositivos">
+        <div class="q-ma-md" v-if="dispositivos.length!=0">
           <span class="text-bold q-mb-md">Dispositivos disponíveis: </span>
-          <q-list bordered>
-            <q-item clickable v-ripple>
+          <q-list bordered v-for="(device, index) in dispositivos" :key="index">
+            <q-item clickable v-ripple @click="conectarDispositivo(device)">
               <q-item-section avatar>
-                <q-icon color="primary" name="light" />
+                <q-icon color="primary" name="bluetooth_connected" />
               </q-item-section>
               <q-item-section class="columns">
-                <span>Nome: HC- 06</span>
-                <span>Mac: 78:54:3C:D4:54</span>
+                <span>Nome: {{device.name}}</span>
+                <span>Mac: {{device.id}}</span>
               </q-item-section>
             </q-item>
           </q-list>
         </div>
-        <div v-else-if="!dispositivos && bluetoothOn">
-          <q-btn class="full-width q-ma-md" color="primary" icon="search" label="Procurar dispositivo" />
+        <div v-else-if="dispositivos.length==0 && getBluetoothState">
+          <q-btn class="full-width q-ma-md" color="primary" icon="search" label="Procurar dispositivo" @click="procurarDispositivos" />
+          <q-btn class="full-width q-ma-md" color="primary" label="Carregar lista de dispositivos pareados" @click="dispositivosPareados" />
         </div>
       </div>
     </template>
@@ -64,15 +65,18 @@
 </template>
 
 <script>
+/* eslint-disable */
+import {  } from 'cordova-plugin-bluetoothclassic-serial/www/bluetoothClassicSerial.js'
+import { Loading } from 'quasar'
+
 export default {
   name: 'PageIndex',
   data () {
     return {
       text: '',
       luzes: [],
-      dispositivos: ['null'],
+      dispositivos: [],
       dispConectado: '',
-      bluetoothOn: true
     }
   },
   mounted () {
@@ -86,16 +90,76 @@ export default {
     getPage () {
       // eslint-disable-next-line vue/no-side-effects-in-computed-properties
       return this.$store.getters.getPage || 'inicio'
+    },
+    getBluetoothState() {
+      return this.$store.getters.getBluetoothState || false
     }
   },
   methods: {
+    conectarDispositivo(device){
+      Loading.show({message:'Conectando com dispositivo '+device.name})
+      let connected = false
+      let connect = new Promise( (resolve, reject) => {
+        bluetoothClassicSerial.connect(device.id, '00001101-0000-1000-8000-00805f9b34fb', 
+          ()=>{
+            console.log('OK-CONNECT');
+            Loading.hide();
+            alert('Dispositivo conectado com sucesso')
+            connected = true
+            this.$store.commit('setDevice', device)
+            this.$store.commit('setPage', 'pageOne')
+            resolve('sucesso')
+          },
+          ()=>{console.log('Deu ruim -connect');Loading.hide();reject('Deu rim')}
+        )
+      })
+      let timeOut = new Promise ((resolve, reject) => {setTimeout(() => {
+        Loading.hide()
+        if (!connected){
+          alert('Não foi possível conectar com o dispositivo '+device.name)
+          reject('Deu ruim, time out')
+        }      }, 5000);
+      })
+      
+      return Promise.race([connect, timeOut])
+    },
+    dispositivosPareados(){
+      bluetoothClassicSerial.list(
+        (devices)=>{
+          if (devices.length) {  
+            devices.forEach((device)=>{
+              this.dispositivos.push(device)
+            })
+            console.log(this.dispositivos)
+          }
+        },
+        ()=>{console.log('sem nada')}
+      )
+    },
+    async procurarDispositivos(){
+      let response = 0
+      bluetoothClassicSerial.disconnect(
+        ()=>{console.log('OK')},
+        ()=>{console.log('Deu ruim')}
+      )
+      console.log(bluetoothClassicSerial)
+      Loading.show({message: 'Procurando Dispositivos'})
+       await bluetoothClassicSerial.discoverUnpaired(
+        (devices) => {
+          if (devices.length) console.log(devices)
+          else {
+            console.log('deu ruim aqui dentro')
+            alert('Nenhum dispositivo encontrado.') 
+          }
+          Loading.hide()
+        },
+        () => {console.log('deu ruim')}
+      )
+    },
     getLuzes () {
-      const aux = { nome: 'Luz 1', estado: false, macBluetooth: '' }
-      const aux2 = { nome: 'Luz 2', estado: false, macBluetooth: '' }
-      const aux3 = { nome: 'Luz 3', estado: true, macBluetooth: '78:54:3C:D4:54' }
+      let device = this.$store.getters.getDevice
+      const aux = { nome: device.name, estado: false, macBluetooth: device.id }
       this.luzes.push(aux)
-      this.luzes.push(aux3)
-      this.luzes.push(aux2)
     },
     mostrarNotificacao (mensagem, tipo) {
       if (!tipo || tipo === 'positive' || tipo === 'negative' || tipo === 'warning') {
