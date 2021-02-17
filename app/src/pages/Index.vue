@@ -9,12 +9,21 @@
       </div>
       <div class="q-mt-xl q-my-sm">
         <span class="text-h4">Seja bem vindo!</span>
-        <q-input class="q-my-sm" v-model="text" type="text" placeholder="Insira seu nome aqui" />
-        <q-btn class="full-width" align="center" color="primary" label="ENTRAR" @click="text ? mudarTela('pageOne') : mostrarNotificacao( 'Preencha o seu nome', 'warning') " />
+        <q-input class="q-my-sm" v-model="userName" type="text" placeholder="Insira seu nome aqui" />
+        <q-btn class="full-width" align="center" color="primary" label="ENTRAR" @click="login" />
       </div>
     </template>
 
     <template v-else-if="getPage=='pageOne'">
+      <div class="full-width q-my-xs">
+        <q-separator color="secondary" />
+      </div>
+      <div class="full-width text-center">
+        <q-btn label="Comando de voz" color="primary" icon="mic" @click="speechRecognition" />
+      </div>
+      <div class="full-width q-my-xs">
+        <q-separator color="secondary" />
+      </div>
       <q-list class="full-width q-ma-sm" bordered  v-for="(luz, index) in luzes" :key="index">
         <q-item clickable v-ripple>
           <q-item-section class="col-2" avatar>
@@ -44,12 +53,13 @@
         <div class="q-ma-md" v-if="dispositivos.length!=0">
           <span class="text-bold q-mb-md">Dispositivos disponíveis: </span>
           <q-list bordered v-for="(device, index) in dispositivos" :key="index">
-            <q-item clickable v-ripple @click="conectarDispositivo(device)">
+            <q-item v-ripple >
               <q-item-section avatar>
-                <q-icon color="primary" name="bluetooth_connected" />
+                <q-btn class="full-width" color="primary" icon="bluetooth_connected"  @click="conectarDispositivo(device)"/>
               </q-item-section>
               <q-item-section class="columns">
-                <span>Nome: {{device.name}}</span>
+                <!-- <span>Nome: {{device.name}}</span> -->
+                <q-input v-model="device.name" type="text" />
                 <span>Mac: {{device.id}}</span>
               </q-item-section>
             </q-item>
@@ -77,13 +87,23 @@ export default {
       luzes: [],
       dispositivos: [],
       dispConectado: '',
+      comandoVoz:'',
+      acertividade:'',
+      userName:''
     }
+  },
+  created() {
+    this.userName = this.$store.getters.getUserName
+    if (this.userName) this.mudarTela('pageOne')
   },
   mounted () {
     this.getLuzes()
     console.log('page: ', this.getPage)
   },
   computed: {
+    devices () {
+      return this.$store.getters.getDevice
+    },
     logo () {
       return ''
     },
@@ -96,6 +116,40 @@ export default {
     }
   },
   methods: {
+    login(){
+      if(this.userName){
+        this.mudarTela('pageOne') 
+        this.$store.commit('setUserName', this.userName)
+      } 
+    },
+    speechRecognition(){
+      var myRecognition = new webkitSpeechRecognition();
+      let listening = false
+
+      myRecognition.continuos = false
+      myRecognition.lang = "pt-BR"
+      myRecognition.interimResults = false
+
+      myRecognition.onstart = function(){
+        listening = true
+        console.log('gravando')
+      }
+      myRecognition.onend = function(){
+        listening = false
+        console.log('paro')
+      }
+      myRecognition.onresult = function(result){
+        this.comandoVoz = result.results[0][0].transcript
+        this.acertividade = result.results[0][0].confidence
+
+        console.log('Fala: ', this.comandoVoz)
+        console.log('Precisao: ', this.acertividade)
+
+        //TODO: Inserir funções de reconhecimento de qual luz acionar
+      }
+
+      myRecognition.start()
+    },
     enviarDado(dado){
       console.log('dado a ser enviado: ', dado)
       bluetoothClassicSerial.write("00001101-0000-1000-8000-00805f9b34fb", dado, 
@@ -113,7 +167,7 @@ export default {
             Loading.hide();
             alert('Dispositivo conectado com sucesso')
             connected = true
-            this.$store.commit('setDevice', device)
+            this.$store.commit('addDevice', device)
             this.$store.commit('setPage', 'pageOne')
             resolve('sucesso')
           },
@@ -125,7 +179,7 @@ export default {
         if (!connected){
           alert('Não foi possível conectar com o dispositivo '+device.name)
           reject('Deu ruim, time out')
-        }      }, 5000);
+        }}, 5000);
       })
       
       return Promise.race([connect, timeOut])
@@ -144,12 +198,12 @@ export default {
       )
     },
     async procurarDispositivos(){
+      console.log(bluetoothClassicSerial)
       let response = 0
       bluetoothClassicSerial.disconnect(
         ()=>{console.log('OK')},
         ()=>{console.log('Deu ruim')}
       )
-      console.log(bluetoothClassicSerial)
       Loading.show({message: 'Procurando Dispositivos'})
        await bluetoothClassicSerial.discoverUnpaired(
         (devices) => {
@@ -164,10 +218,13 @@ export default {
       )
     },
     getLuzes () {
-      let device = this.$store.getters.getDevice
-      console.log('Device: ', device)
-      const aux = { nome: device.name, estado: false, macBluetooth: device.id }
-      this.luzes.push(aux)
+      console.log('Device: ', this.devices)
+      if (devices){
+        for (device of devices) {
+          const aux = { nome: this.devices.name, estado: false, macBluetooth: this.devices.id }
+          this.luzes.push(aux)
+        }
+      }
     },
     mostrarNotificacao (mensagem, tipo) {
       if (!tipo || tipo === 'positive' || tipo === 'negative' || tipo === 'warning') {

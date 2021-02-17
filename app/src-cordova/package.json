@@ -19,15 +19,13 @@
   "cordova": {
     "plugins": {
       "cordova-plugin-whitelist": {},
-      "cordova-plugin-bluetoothclassic-serial": {},
-      "cordova-plugin-speech": {}
+      "cordova-plugin-bluetoothclassic-serial": {}
     },
     "platforms": [
       "android"
     ]
   },
   "dependencies": {
-    "cordova-plugin-bluetoothclassic-serial": "^1.0.2",
-    "cordova-plugin-speech": "0.0.4"
+    "cordova-plugin-bluetoothclassic-serial": "^1.0.2"
   }
 }

@@ -1,26 +1,33 @@
-/* eslint-disable */
+
 const state = {
   page: 'inicio',
   bluetoothState: false,
-  device:{}
+  device: [],
+  userName: null
 }
 
 var mutations = {
+  setUserName (state, name) {
+    if (name) state.userName = name
+  },
   setPage (state, payload) {
     if (payload) state.page = payload
-    else alert('Erro ao definir página')
   },
   setBluetoothState (state, payload) {
-    if (payload !== null && payload !== undefined) state.bluetoothState = payload
-    else alert('Erro ao definir bluetoothState')
+    if (payload) state.bluetoothState = payload
   },
-  setDevice(state, payload){
-    if (payload !== null && payload !== undefined) state.device = payload
-    else alert('Erro ao definir device')
+  setDevice (state, payload) {
+    if (payload) state.device = payload
+  },
+  addDevice (state, device) {
+    if (device) state.device.push(device)
   }
 }
 
 const getters = {
+  getUserName (state) {
+    return state.userName
+  },
   getPage (state) {
     return state.page
   },
@@ -32,18 +39,10 @@ const getters = {
   }
 }
 
-const actions = {
-  setAtcion (context, payload) {
-    const action = payload[0]
-    Array.shift(payload)
-    context.commit(action, payload)
-  }
-}
-
 export default {
   namespaced: false,
   getters,
   mutations,
-  actions,
+  // actions,
   state
 }

@@ -12,7 +12,8 @@
         />
 
         <q-toolbar-title class="flex flex-center">
-          EasyLight
+          <span v-if="userName">{{userName}}</span>
+          <span v-else>EasyLight</span>
         </q-toolbar-title>
 
         <q-icon v-if="getPage=='pageOne'" size="20px" name="logout" color="white" @click="getPage!='inicio' ? voltarInicio() : ''"/>
@@ -104,25 +105,27 @@ export default {
     }
   },
   computed: {
+    userName () {
+      return this.$store.getters.getUserName
+    },
     getPage () {
       return this.$store.getters.getPage || 'inicio'
     }
   },
   methods: {
-    abrirBluetooth(){
-      this.leftDrawerOpen=false
-      bluetoothClassicSerial.isEnabled (
+    abrirBluetooth () {
+      this.leftDrawerOpen = false
+      bluetoothClassicSerial.isEnabled(
         () => { this.$store.commit('setBluetoothState', true) },
         () => {
-          if (this.$q.platform.is.android){
+          if (this.$q.platform.is.android) {
             bluetoothClassicSerial.enable(
               () => { this.$store.commit('setBluetoothState', true) },
-              () => { this.$store.commit('setBluetoothState', false);this.$store.commit('setPage', 'pageOne');return},
+              () => { this.$store.commit('setBluetoothState', false); this.$store.commit('setPage', 'pageOne') }
             )
-          }else {
-            alert('Ative o Bluetooth'); 
-            this.$store.commit('setPage', 'pageOne');
-            return
+          } else {
+            alert('Ative o Bluetooth')
+            this.$store.commit('setPage', 'pageOne')
           }
         }
       )
