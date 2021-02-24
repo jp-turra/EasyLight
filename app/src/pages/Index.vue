@@ -33,7 +33,7 @@
             <q-icon size="8vw" v-ripple color="secondary" name="delete" @click="excluirDipositivo(index)" />
           </q-item-section>
         </q-item>
-        <q-btn class="full-width" color="primary" :label="luz.estado ? 'Desligar' : 'Ligar'" @click="enviarDado(luz,'acionar|')" />
+        <q-btn class="full-width" color="primary" :label="luz.estado ? 'Desligar' : 'Ligar'" @click="enviarDado(luz,'acionar')" />
       </q-list>
       <div v-if="comandoVoz" class="full-width q-my-xs">
         <q-separator color="secondary" />
@@ -71,7 +71,7 @@
           <q-list bordered v-for="(device, index) in dispositivos" :key="index">
             <q-item v-ripple >
               <q-item-section avatar>
-                <q-btn class="full-width" color="primary" icon="bluetooth_connected"  @click="conectarDispositivo(device)"/>
+                <q-btn class="full-width" color="primary" icon="bluetooth_connected"  @click="conectarDispositivo(device,  true)"/>
               </q-item-section>
               <q-item-section class="columns">
                 <q-input v-model="device.name" type="text" />
@@ -121,7 +121,6 @@ export default {
   },
   mounted () {
     this.getLuzes()
-    console.log('page: ', this.getPage)
   },
   computed: {
     devices () {
@@ -172,10 +171,15 @@ export default {
       )
       this.listening=false
     },
-    acionarDispositivo(comando){
+    async acionarDispositivo(comando){
       comando = comando.split(" ")
-      let action = comando[0]
-      let dispName = comando[1]
+      let action = comando.length>1 ? comando[0] : comando
+      let dispName = comando.length>=2 ? comando.length>2 ? comando.slice(1).toString().replaceAll(","," ") : comando[1] : null
+      let device
+      if (dispName && dispName!="") device = this.getDeviceByName(dispName)
+      console.log(device)
+      if (!device) {alert("Nenhum dispositivo encontrado");return}
+      else this.enviarDado(device, action)
     },
     // ****************** BLEUTOOTH *************************
     abrirBluetooth () {
@@ -209,7 +213,6 @@ export default {
       )
     },
     async procurarDispositivos(){
-      console.log(bluetoothClassicSerial)
       let response = 0
       Loading.show({message: 'Procurando Dispositivos'})
       let promise = new Promise((resolve, reject)=>{
@@ -237,50 +240,78 @@ export default {
     },
     async enviarDado(device,dado){
       console.log(device)
-      dado = new String(dado).toString()
-      if (dado){
-        await bluetoothClassicSerial.write("00001101-0000-1000-8000-00805F9B34FB", dado, 
-          ()=>{console.log('dado a enviado: ', dado)}, 
-          ()=>{console.log('n enviou')}
-        );
+      let response
+      if (this.dispConectado&&device&&this.dispConectado.id==device.id) response="sucesso"
+      else{
+        this.desconectarTodos()
+        response = await this.conectarDispositivo(device, false)
+      }
+      Loading.show({message:"Enviando comando "+dado})
+      console.log("response: ", response)
+      if (response="sucesso") {
+        setTimeout(() => {
+          try{dado = new String(dado).toString()}
+          catch{return}
+          if (dado){
+            bluetoothClassicSerial.write("00001101-0000-1000-8000-00805F9B34FB", dado+"|", 
+              ()=>{
+                console.log('dado a enviado: ', dado)
+                Loading.hide()
+              }, 
+              ()=>{console.log('n enviou')}
+            );
+          }  
+        }, 1000);
       }
     },
-    conectarDispositivo(device){
+    async conectarDispositivo(device, cadastro){
       Loading.show({message:'Conectando com dispositivo '+ device.name})
-      let connected = false
+      if (this.dispConectado&&cadastro) this.desconectarTodos()
       let connect = new Promise( (resolve, reject) => {
         bluetoothClassicSerial.connect(device.id, "00001101-0000-1000-8000-00805F9B34FB", 
           ()=>{
             console.log('OK-CONNECT');
             Loading.hide();
-            connected = true
-            this.$store.commit('addDevice', device)
-            this.$store.commit('setPage', 'pageOne')
+            this.dispConectado = device
+            if (cadastro) {
+              this.$store.commit('addDevice', device)
+              this.$store.commit('setPage', 'pageOne')
+            }
             resolve('sucesso')
           },
-          ()=>{console.log('Deu ruim -connect');Loading.hide();reject(null)}
+          ()=>{console.log('Deu ruim -connect');this.dispConectado=null;Loading.hide();}
         )
       })
       let timeOut = new Promise ((resolve, reject) => {setTimeout(() => {
-        Loading.hide()
-        if (!connected){
-          reject(null)
-        }}, 5000);
+        if(cadastro) {Loading.hide();}
+        reject(null)
+      }, 5000);
       })
-      
       return Promise.race([connect, timeOut])
     },
-    
+    desconectarTodos(){
+      bluetoothClassicSerial.disconnect(()=>{console.log("Desconectado com sucesso")}, ()=>{console.log("Erro ao desconectar")});
+    },
 
     // ****************** FUNCÕES GERAIS *************************
     getLuzes () {
-      console.log('Device: ', this.devices)
       if (this.devices){
-        for (device of this.devices) {
-          const aux = { nome: this.devices.name, estado: false, macBluetooth: this.devices.id }
+        for (let device of this.devices) {
+          const aux = { nome: device.name, estado: false, macBluetooth: device.id }
           this.luzes.push(aux)
         }
       }
+    },
+    getDeviceByName(info){
+      let match = null;
+      this.devices.forEach((device, index)=>{
+        for (let prop in Object(device)){
+          if (device[prop].toString().toLowerCase() == info.toString().toLowerCase()){
+            match = device
+          }
+        }
+      })
+      return match
     },
     excluirDipositivo(index) {
       let devices = this.devices
