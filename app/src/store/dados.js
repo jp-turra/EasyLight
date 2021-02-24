@@ -3,10 +3,14 @@ const state = {
   page: 'inicio',
   bluetoothState: false,
   device: [],
-  userName: null
+  userName: null,
+  recognitionStatus: false
 }
 
 var mutations = {
+  setRecognitionStatus (state, status) {
+    state.recognitionStatus = status
+  },
   setUserName (state, name) {
     if (name) state.userName = name
   },
@@ -20,11 +24,15 @@ var mutations = {
     if (payload) state.device = payload
   },
   addDevice (state, device) {
+    console.log(device)
     if (device) state.device.push(device)
   }
 }
 
 const getters = {
+  getRecognitionStatus (state) {
+    return state.recognitionStatus
+  },
   getUserName (state) {
     return state.userName
   },

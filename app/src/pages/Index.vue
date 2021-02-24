@@ -1,5 +1,6 @@
 <template>
   <q-page class="column content-center q-ma-sm">
+    <!-- Login -->
     <template v-if="getPage=='inicio'">
       <div class="q-my-sm">
         <q-img
@@ -13,37 +14,52 @@
         <q-btn class="full-width" align="center" color="primary" label="ENTRAR" @click="login" />
       </div>
     </template>
-
+    <!-- Paginal Inicial -->
     <template v-else-if="getPage=='pageOne'">
-      <div class="full-width q-my-xs">
+      <div v-if="devices.length>0" class="full-width q-my-xs">
         <q-separator color="secondary" />
       </div>
-      <div class="full-width text-center">
-        <q-btn label="Comando de voz" color="primary" icon="mic" @click="speechRecognition" />
-      </div>
-      <div class="full-width q-my-xs">
-        <q-separator color="secondary" />
-      </div>
-      <q-list class="full-width q-ma-sm" bordered  v-for="(luz, index) in luzes" :key="index">
-        <q-item clickable v-ripple>
+      <!-- Lista de dispositivos disponíveis/pareados -->
+      <q-list class="full-width q-ma-sm" bordered  v-for="(luz, index) in devices" :key="index">
+        <q-item >
           <q-item-section class="col-2" avatar>
             <q-icon color="primary" name="light" />
           </q-item-section>
           <q-item-section class="col-8">
-            <span class="text-h6"> {{luz.nome}}<span style="font-size:13px;">{{luz.macBluetooth ? ' - '+luz.macBluetooth : ''}}</span> </span>
+            <span class="text-h6"> {{luz.name}}<span style="font-size:13px;">{{luz.id ? ' - '+luz.id : ''}}</span> </span>
             <span class="text-h8 q-mb-sm"> Estado: {{luz.estado ? 'Ligada' : 'Desligada'}}</span>
           </q-item-section>
-          <q-item-section avatar class="col-2">
-            <q-icon color="secondary" name="delete" />
+          <q-item-section  avatar class="col-2">
+            <q-icon size="8vw" v-ripple color="secondary" name="delete" @click="excluirDipositivo(index)" />
           </q-item-section>
         </q-item>
-        <q-btn class="full-width" color="primary" :label="luz.estado ? 'Desligar' : 'Ligar'" @click="enviarDado(9)" />
+        <q-btn class="full-width" color="primary" :label="luz.estado ? 'Desligar' : 'Ligar'" @click="enviarDado(luz,'acionar|')" />
       </q-list>
-      <div class="q-mb-xl">
-        <q-btn class="full-width" color="green-8" icon="add" label="Adicionar Dispositivo" />
+      <div v-if="comandoVoz" class="full-width q-my-xs">
+        <q-separator color="secondary" />
+      </div>
+      <!-- Mostrar comando de voz enviado -->
+      <div class="full-width">
+        <div v-if="comandoVoz" class="full-width">
+          <span  class="text-h8 text-primary">Comando enviado: </span>
+        </div>
+        <div v-if="comandoVoz" class="full-width text-center">
+          <span style="font-size:1.2rem">{{comandoVoz[0]}}<br></span>
+        </div>
+      </div>
+      <div v-if="comandoVoz" class="full-width q-my-xs">
+        <q-separator color="secondary" />
+      </div>
+      <!-- Adicionar Dispositivo -->
+      <div class="q-mt-xl" :class="devices.length==0 ? 'fixed-center': ''">
+        <q-btn class="full-width" color="green-8" icon="add" label="Adicionar Dispositivo" @click="abrirBluetooth"/>
+      </div>
+      <!-- Acionar comando de voz -->
+      <div class="row fixed-bottom full-width justify-center">
+        <q-btn round align="center" class="q-mb-md" color="primary" :loading="listening" icon="mic" size="20px" @click="listening ? StopSpeechRecognition : StartSpeechRecognition" />
       </div>
     </template>
-
+    <!-- Configuração de dispositivo / Bluetooh -->
     <template v-else-if="getPage=='bluetooth'">
       <div class="columns full-width flex-center">
         <div class="q-ma-lg">
@@ -58,7 +74,6 @@
                 <q-btn class="full-width" color="primary" icon="bluetooth_connected"  @click="conectarDispositivo(device)"/>
               </q-item-section>
               <q-item-section class="columns">
-                <!-- <span>Nome: {{device.name}}</span> -->
                 <q-input v-model="device.name" type="text" />
                 <span>Mac: {{device.id}}</span>
               </q-item-section>
@@ -77,7 +92,15 @@
 <script>
 /* eslint-disable */
 import {  } from 'cordova-plugin-bluetoothclassic-serial/www/bluetoothClassicSerial.js'
-import { Loading } from 'quasar'
+import { Loading, Notify, Dialog } from 'quasar'
+
+const option = {
+  language:"pt-BR",
+  matches:5,
+  prompt:"",      // Android only
+  showPopup:false,  // Android only
+  showPartial:false 
+}
 
 export default {
   name: 'PageIndex',
@@ -88,8 +111,8 @@ export default {
       dispositivos: [],
       dispConectado: '',
       comandoVoz:'',
-      acertividade:'',
-      userName:''
+      listening:false,
+      userName:'',
     }
   },
   created() {
@@ -116,73 +139,55 @@ export default {
     }
   },
   methods: {
+    // ****************** LOGIN *************************
     login(){
       if(this.userName){
         this.mudarTela('pageOne') 
         this.$store.commit('setUserName', this.userName)
-      } 
-    },
-    speechRecognition(){
-      var myRecognition = new webkitSpeechRecognition();
-      let listening = false
-
-      myRecognition.continuos = false
-      myRecognition.lang = "pt-BR"
-      myRecognition.interimResults = false
-
-      myRecognition.onstart = function(){
-        listening = true
-        console.log('gravando')
+      }else{
+        this.mudarTela('pageOne') 
+        this.$store.commit('setUserName', "Anônimo")
       }
-      myRecognition.onend = function(){
-        listening = false
-        console.log('paro')
-      }
-      myRecognition.onresult = function(result){
-        this.comandoVoz = result.results[0][0].transcript
-        this.acertividade = result.results[0][0].confidence
-
-        console.log('Fala: ', this.comandoVoz)
-        console.log('Precisao: ', this.acertividade)
-
-        //TODO: Inserir funções de reconhecimento de qual luz acionar
-      }
-
-      myRecognition.start()
     },
-    enviarDado(dado){
-      console.log('dado a ser enviado: ', dado)
-      bluetoothClassicSerial.write("00001101-0000-1000-8000-00805f9b34fb", dado, 
-        ()=>{}, 
-        ()=>{}
-      );
+
+    // ****************** SPEECH RECOGNITION *************************
+    StartSpeechRecognition(){
+      console.log('Recording')
+      this.listening = true
+      window.plugins.speechRecognition.startListening(
+        (success)=>{
+          this.comandoVoz = success
+          this.listening = false
+          this.enviarDado({}, this.comandoVoz[0].toLowerCase()+"|")
+        },
+        ()=>{console.log("Error on recognizing")},
+        option
+      )
     },
-    conectarDispositivo(device){
-      Loading.show({message:'Conectando com dispositivo '+device.name})
-      let connected = false
-      let connect = new Promise( (resolve, reject) => {
-        bluetoothClassicSerial.connect(device.id, '00001101-0000-1000-8000-00805f9b34fb', 
-          ()=>{
-            console.log('OK-CONNECT');
-            Loading.hide();
-            alert('Dispositivo conectado com sucesso')
-            connected = true
-            this.$store.commit('addDevice', device)
+    StopSpeechRecognition(){
+      console.log('Stop recording')
+      window.plugins.speechRecognition.stopListening(
+        (success)=>{console.log("Recognition stopped"); this.listening=false},
+        ()=>{console.log("Error on recognize")},
+      )
+    },
+    // ****************** BLEUTOOTH *************************
+    abrirBluetooth () {
+      bluetoothClassicSerial.isEnabled(
+        () => { this.$store.commit('setBluetoothState', true) },
+        () => {
+          if (this.$q.platform.is.android) {
+            bluetoothClassicSerial.enable(
+              () => { this.$store.commit('setBluetoothState', true) },
+              () => { this.$store.commit('setBluetoothState', false); this.$store.commit('setPage', 'pageOne') }
+            )
+          } else {
+            alert('Ative o Bluetooth')
             this.$store.commit('setPage', 'pageOne')
-            resolve('sucesso')
-          },
-          ()=>{console.log('Deu ruim -connect');Loading.hide();reject('Deu rim')}
-        )
-      })
-      let timeOut = new Promise ((resolve, reject) => {setTimeout(() => {
-        Loading.hide()
-        if (!connected){
-          alert('Não foi possível conectar com o dispositivo '+device.name)
-          reject('Deu ruim, time out')
-        }}, 5000);
-      })
-      
-      return Promise.race([connect, timeOut])
+          }
+        }
+      )
+      this.$store.commit('setPage', 'bluetooth')
     },
     dispositivosPareados(){
       bluetoothClassicSerial.list(
@@ -200,44 +205,95 @@ export default {
     async procurarDispositivos(){
       console.log(bluetoothClassicSerial)
       let response = 0
-      bluetoothClassicSerial.disconnect(
-        ()=>{console.log('OK')},
-        ()=>{console.log('Deu ruim')}
-      )
       Loading.show({message: 'Procurando Dispositivos'})
-       await bluetoothClassicSerial.discoverUnpaired(
-        (devices) => {
-          if (devices.length) console.log(devices)
-          else {
-            console.log('deu ruim aqui dentro')
-            alert('Nenhum dispositivo encontrado.') 
-          }
-          Loading.hide()
-        },
-        () => {console.log('deu ruim')}
-      )
+      let promise = new Promise((resolve, reject)=>{
+        bluetoothClassicSerial.discoverUnpaired(
+          (devices) => {
+            console.log('Sem filtro', devices)
+            if (devices) {console.log(devices);resolve(devices)}
+            else {
+              //Notify.create({message:'Nenhum dispositivo encontrado.'}) 
+              Loading.hide()
+              reject(null)
+            }
+          },
+          () => {console.log('deu ruim');Loading.hide();}
+        )
+      })
+      let timeoutPromise = new Promise((resolve, reject)=>{setTimeout(() => {
+        reject(null)
+      }, 10000);})
+      
+      console.log('Start promisse')
+      response = await Promise.race([promise, timeoutPromise])
+      if (response) console.log('response: ', response)
+      else console.log("Nulo")
     },
+    async enviarDado(device,dado){
+      console.log(device)
+      dado = new String(dado).toString()
+      if (dado){
+        await bluetoothClassicSerial.write("00001101-0000-1000-8000-00805F9B34FB", dado, 
+          ()=>{console.log('dado a enviado: ', dado)}, 
+          ()=>{console.log('n enviou')}
+        );
+      }
+    },
+    conectarDispositivo(device){
+      Loading.show({message:'Conectando com dispositivo '+ device.name})
+      let connected = false
+      let connect = new Promise( (resolve, reject) => {
+        bluetoothClassicSerial.connect(device.id, "00001101-0000-1000-8000-00805F9B34FB", 
+          ()=>{
+            console.log('OK-CONNECT');
+            Loading.hide();
+            connected = true
+            this.$store.commit('addDevice', device)
+            this.$store.commit('setPage', 'pageOne')
+            resolve('sucesso')
+          },
+          ()=>{console.log('Deu ruim -connect');Loading.hide();reject(null)}
+        )
+      })
+      let timeOut = new Promise ((resolve, reject) => {setTimeout(() => {
+        Loading.hide()
+        if (!connected){
+          reject(null)
+        }}, 5000);
+      })
+      
+      return Promise.race([connect, timeOut])
+    },
+    
+
+    // ****************** FUNCÕES GERAIS *************************
     getLuzes () {
       console.log('Device: ', this.devices)
-      if (devices){
-        for (device of devices) {
+      if (this.devices){
+        for (device of this.devices) {
           const aux = { nome: this.devices.name, estado: false, macBluetooth: this.devices.id }
           this.luzes.push(aux)
         }
       }
     },
-    mostrarNotificacao (mensagem, tipo) {
-      if (!tipo || tipo === 'positive' || tipo === 'negative' || tipo === 'warning') {
-        alert(mensagem)
-      }
+    excluirDipositivo(index) {
+      let devices = this.devices
+      devices = this.drop(devices, index)
+      this.$store.commit('setDevice', devices)
     },
     mudarTela (tela) {
       if (tela) {
         this.$store.commit('setPage', tela)
       }
     },
-    acionarLuz () {
-      console.log('Acionada')
+    drop (array, position) {
+      let aux = []
+      array.forEach((val,i) => {
+        if (i != position){
+          aux.push(val)
+        }
+      })
+      return aux
     }
   }
 }
