@@ -55,8 +55,8 @@
         <q-btn class="full-width" color="green-8" icon="add" label="Adicionar Dispositivo" @click="abrirBluetooth"/>
       </div>
       <!-- Acionar comando de voz -->
-      <div class="row fixed-bottom full-width justify-center">
-        <q-btn round align="center" class="q-mb-md" color="primary" :loading="listening" icon="mic" size="20px" @click="listening ? StopSpeechRecognition : StartSpeechRecognition" />
+      <div v-if="devices.length>0" class="row fixed-bottom full-width justify-center">
+        <q-btn round :class="listening ? 'pulse-button' : ''" align="center" class="q-mb-md" color="primary" icon="mic" :size="listening?'8vw':'6vw'" @click="listening? StopSpeechRecognition():StartSpeechRecognition()" />
       </div>
     </template>
     <!-- Configuração de dispositivo / Bluetooh -->
@@ -158,18 +158,24 @@ export default {
         (success)=>{
           this.comandoVoz = success
           this.listening = false
-          this.enviarDado({}, this.comandoVoz[0].toLowerCase()+"|")
+          this.acionarDispositivo(success[0].toLowerCase())
         },
-        ()=>{console.log("Error on recognizing")},
+        ()=>{console.log("Error on recognizing"); this.listening=false},
         option
       )
     },
     StopSpeechRecognition(){
       console.log('Stop recording')
       window.plugins.speechRecognition.stopListening(
-        (success)=>{console.log("Recognition stopped"); this.listening=false},
-        ()=>{console.log("Error on recognize")},
+        (success)=>{console.log("Recognition stopped");},
+        ()=>{console.log("Error on stop recognition");},
       )
+      this.listening=false
+    },
+    acionarDispositivo(comando){
+      comando = comando.split(" ")
+      let action = comando[0]
+      let dispName = comando[1]
     },
     // ****************** BLEUTOOTH *************************
     abrirBluetooth () {
@@ -298,3 +304,23 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.pulse-button {
+  margin-bottom: 15vw;
+  border: none;
+  box-shadow: 0 0 0 0 #26A69A;
+  border-radius: 50%;
+  background-size:cover;
+  cursor: pointer;
+  -webkit-animation: pulse 1.25s infinite cubic-bezier(0.66, 0, 0, 1);
+  -moz-animation: pulse 1.25s infinite cubic-bezier(0.66, 0, 0, 1);
+  -ms-animation: pulse 1.25s infinite cubic-bezier(0.66, 0, 0, 1);
+  animation: pulse 1.25s infinite cubic-bezier(0.66, 0, 0, 1);
+}
+
+@-webkit-keyframes pulse {to {box-shadow: 0 0 0 45px rgba(232, 76, 61, 0);}}
+@-moz-keyframes pulse {to {box-shadow: 0 0 0 45px rgba(232, 76, 61, 0);}}
+@-ms-keyframes pulse {to {box-shadow: 0 0 0 45px rgba(232, 76, 61, 0);}}
+@keyframes pulse {to {box-shadow: 0 0 0 45px rgba(232, 76, 61, 0);}}
+</style>
