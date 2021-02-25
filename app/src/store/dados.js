@@ -47,10 +47,30 @@ const getters = {
   }
 }
 
+const actions = {
+  logOut (context) {
+    context.commit('setUserName', null)
+    context.commit('setDevice', null)
+    context.commit('setPage', 'inicio')
+  },
+  updateDevice (context, payload) {
+    const device = payload
+    // eslint-disable-next-line prefer-const
+    let devices = context.getters.getDevice
+    const index = devices.indexOf(device)
+    devices.forEach((val, i) => {
+      if (index === i) {
+        devices[index] = device
+      }
+    })
+    context.commit('setDevice', devices)
+  }
+}
+
 export default {
   namespaced: false,
   getters,
   mutations,
-  // actions,
+  actions,
   state
 }

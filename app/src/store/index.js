@@ -1,6 +1,7 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
 import dados from './dados'
+import createPersistedState from 'vuex-persistedstate'
 
 Vue.use(Vuex)
 
@@ -14,7 +15,7 @@ export default function (/* { ssrContext } */) {
     modules: {
       dados
     },
-
+    plugins: [createPersistedState({ path: ['device', 'userName'] })],
     // enable strict mode (adds overhead!)
     // for dev mode only
     strict: process.env.DEBUGGING
