@@ -12,7 +12,7 @@
         />
 
         <q-toolbar-title class="flex flex-center">
-          <span v-if="userName">{{userName}}</span>
+          <span v-if="getPage!='inicio'">{{userName}}</span>
           <span v-else>EasyLight</span>
         </q-toolbar-title>
 
@@ -132,7 +132,8 @@ export default {
       this.$store.commit('setPage', 'bluetooth')
     },
     voltarInicio () {
-      this.$store.commit('setPage', 'inicio')
+      bluetoothClassicSerial.disconnect(()=>{console.log("Desconectado com sucesso")}, ()=>{console.log("Erro ao desconectar")});
+      this.$store.dispatch('logOut')
     }
   }
 }

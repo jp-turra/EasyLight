@@ -20,20 +20,24 @@
         <q-separator color="secondary" />
       </div>
       <!-- Lista de dispositivos disponíveis/pareados -->
-      <q-list class="full-width q-ma-sm" bordered  v-for="(luz, index) in devices" :key="index">
+      <q-list class="full-width q-ma-sm" bordered  v-for="(device, index) in devices" :key="index">
         <q-item >
           <q-item-section class="col-2" avatar>
             <q-icon color="primary" name="light" />
           </q-item-section>
           <q-item-section class="col-8">
-            <span class="text-h6"> {{luz.name}}<span style="font-size:13px;">{{luz.id ? ' - '+luz.id : ''}}</span> </span>
-            <span class="text-h8 q-mb-sm"> Estado: {{luz.estado ? 'Ligada' : 'Desligada'}}</span>
+            <span class="text-h6"> {{device.name}}<span style="font-size:13px;">{{device.id ? ' - '+device.id : ''}}</span> </span>
+            <div v-if="device.comodos" class="full-width row">
+              <div class="col-12" v-for="(comodo, index) in device.comodos" :key="index">
+                <span>Comodo {{index}} - {{comodo.name}}</span>
+              </div>
+            </div>
           </q-item-section>
           <q-item-section  avatar class="col-2">
-            <q-icon size="8vw" v-ripple color="secondary" name="delete" @click="excluirDipositivo(index)" />
+            <q-icon size="8vw" v-ripple color="secondary" name="settings" @click="editarComodos=device.comodos||[];editarEquipamento=device;editarEquipamentoModal=true" />
           </q-item-section>
         </q-item>
-        <q-btn class="full-width" color="primary" :label="luz.estado ? 'Desligar' : 'Ligar'" @click="enviarDado(luz,'acionar')" />
+        <q-btn class="full-width" color="primary" :label="dispConectado ? 'Acionar' : 'Conectar'" @click="dispConectado ? enviarDado(device,'acionar') : conectarDispositivo(device)" />
       </q-list>
       <div v-if="comandoVoz" class="full-width q-my-xs">
         <q-separator color="secondary" />
@@ -86,13 +90,48 @@
         </div>
       </div>
     </template>
+    <!-- Definições de equipamento -->
+    <q-dialog v-model="editarEquipamentoModal" maximized>
+      <q-card>
+        <q-card-section class="columns items-center">
+          <span class="text-h6 text-bold">Configuração de equipamento</span><br>
+          <span class="text-h8">Id: {{editarEquipamento.id}}</span>
+        </q-card-section>
+        <q-card-section class="full-width">
+          <q-separator color="secondary" />
+        </q-card-section>
+        <q-card-section>
+          <q-input class="text-h6" color="primary" v-model="editarEquipamento.name" type="text" label="Nome do Equipamento">
+            <q-btn flat color="primary" icon="clear" size="4vw" @click="editarEquipamento.name=''" />
+          </q-input>
+        </q-card-section>
+        <q-card-section>
+          <div class="ful-width" v-for="(comodo, index) in editarComodos" :key="index">
+            <q-input class="text-h6" color="primary" v-model="comodo.name" type="text" label="Nome do Comodo">
+              <q-btn flat color="primary" icon="clear" size="4vw" @click="comodo.name=''" />
+            </q-input>
+          </div>
+        </q-card-section>
+        <q-card-section v-if="!editarComodos || editarComodos.length < 3">
+          <q-btn class="full-width" color="primary" icon="add" label="Adicionar comodo" @click="editarComodos.push({name:''})" />
+        </q-card-section>
+        <q-card-section class="q-mt-xl">
+          <q-btn class="full-width" color="red-10" icon="delete" label="Deletar Dispositivo" @click="excluirDipositivo(editarEquipamento)" />
+        </q-card-section>
+        <q-card-actions align="around" class="" style="bottom:0px">
+          <q-separator class="full-width q-mb-sm" color="secondary" />
+          <q-btn style="width:40%" label="Cancelar" color="red-8" v-close-popup />
+          <q-btn style="width:40%" label="Salvar" color="green-8" v-close-popup @click="salvarAlteracoesEquipamento(editarEquipamento, editarComodos)"/>
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script>
 /* eslint-disable */
 import {  } from 'cordova-plugin-bluetoothclassic-serial/www/bluetoothClassicSerial.js'
-import { Loading, Notify, Dialog } from 'quasar'
+import { Dialog, Loading } from 'quasar'
 
 const option = {
   language:"pt-BR",
@@ -113,6 +152,9 @@ export default {
       comandoVoz:'',
       listening:false,
       userName:'',
+      editarEquipamentoModal:false,
+      editarEquipamento:{},
+      editarComodos:[]
     }
   },
   created() {
@@ -242,14 +284,12 @@ export default {
       console.log(device)
       let response
       if (this.dispConectado&&device&&this.dispConectado.id==device.id) response="sucesso"
-      else{
-        this.desconectarTodos()
-        response = await this.conectarDispositivo(device, false)
-      }
+      else{ response = await this.conectarDispositivo(device, false) }
       Loading.show({message:"Enviando comando "+dado})
-      console.log("response: ", response)
-      if (response="sucesso") {
-        setTimeout(() => {
+      let timeout = this.dispConectado ? 0 : 5000
+      setTimeout(() => {
+        console.log("response: ", response)
+        if (response="sucesso" && this.dispConectado) {
           try{dado = new String(dado).toString()}
           catch{return}
           if (dado){
@@ -258,36 +298,32 @@ export default {
                 console.log('dado a enviado: ', dado)
                 Loading.hide()
               }, 
-              ()=>{console.log('n enviou')}
+              ()=>{console.log('n enviou');Loading.hide()}
             );
-          }  
-        }, 1000);
-      }
+          }  ;
+        }
+      }, timeout);
     },
     async conectarDispositivo(device, cadastro){
       Loading.show({message:'Conectando com dispositivo '+ device.name})
-      if (this.dispConectado&&cadastro) this.desconectarTodos()
-      let connect = new Promise( (resolve, reject) => {
-        bluetoothClassicSerial.connect(device.id, "00001101-0000-1000-8000-00805F9B34FB", 
-          ()=>{
-            console.log('OK-CONNECT');
-            Loading.hide();
-            this.dispConectado = device
-            if (cadastro) {
-              this.$store.commit('addDevice', device)
-              this.$store.commit('setPage', 'pageOne')
-            }
-            resolve('sucesso')
-          },
-          ()=>{console.log('Deu ruim -connect');this.dispConectado=null;Loading.hide();}
-        )
-      })
-      let timeOut = new Promise ((resolve, reject) => {setTimeout(() => {
-        if(cadastro) {Loading.hide();}
-        reject(null)
-      }, 5000);
-      })
-      return Promise.race([connect, timeOut])
+      bluetoothClassicSerial.connect(device.id, "00001101-0000-1000-8000-00805F9B34FB", 
+        ()=>{
+          console.log('OK-CONNECT');
+          let isDeviceSet = cadastro ? this.hasDevice(device) : true
+          this.dispConectado = device
+          if(cadastro || isDeviceSet)Loading.hide();
+          if (cadastro && !isDeviceSet) {
+            this.$store.commit('addDevice', device)
+            this.$store.commit('setPage', 'pageOne')
+          }
+          return 'sucesso'
+        },
+        ()=>{console.log('Device ', device.id, ' disconnected');this.dispConectado=null;}
+      )
+      setTimeout(() => {
+        Loading.hide()
+        if (!this.dispConectado) {this.desconectarTodos();alert("Falha ao conectar com dispositivo, tente novamente.");}
+      }, 10000);
     },
     desconectarTodos(){
       bluetoothClassicSerial.disconnect(()=>{console.log("Desconectado com sucesso")}, ()=>{console.log("Erro ao desconectar")});
@@ -313,10 +349,38 @@ export default {
       })
       return match
     },
-    excluirDipositivo(index) {
-      let devices = this.devices
-      devices = this.drop(devices, index)
-      this.$store.commit('setDevice', devices)
+    hasDevice(device){
+      let have = false
+      this.devices.forEach((val, index) => {
+        if (val.id == device.id) {
+          alert("Dispositivo já adicionado")
+          have = true
+        }
+      })
+      return have
+    },
+    salvarAlteracoesEquipamento(device, comodos){
+      device.comodos = []
+      comodos.forEach((val)=>{
+        if (val.name || val.name!="") device.comodos.push(val)
+      })
+
+      console.log("Equipamento salvo: ", device)
+      this.$store.dispatch('updateDevice', device)
+    },
+    excluirDipositivo(device) {
+      Dialog.create({
+        title:'Alerta',
+        message:'Você tem certeza que deseja excluir o equipamento?',
+        ok:'Sim',
+        cancel:'Cancelar'
+      }).onOk(()=>{
+        let devices = this.devices
+        let index = devices.indexOf(device)
+        devices = this.drop(devices, index)
+        this.$store.commit('setDevice', devices)
+        this.editarEquipamentoModal = false
+      })
     },
     mudarTela (tela) {
       if (tela) {
