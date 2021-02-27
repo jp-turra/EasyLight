@@ -23,6 +23,7 @@ export default {
       },
       () => { console.log('Recognition Unavailable'); this.$store.commit('setRecognitionStatus', false) }
     )
+    document.addEventListener('deviceready', () => { window.open = cordova.InAppBrowser.open }, false)
   }
 }
 </script>

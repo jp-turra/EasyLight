@@ -14,6 +14,7 @@
   "license": "Apache-2.0",
   "devDependencies": {
     "cordova-android": "^9.0.0",
+    "cordova-plugin-inappbrowser": "^5.0.0",
     "cordova-plugin-speechrecognition": "^1.2.0",
     "cordova-plugin-whitelist": "^1.3.4"
   },
@@ -21,7 +22,8 @@
     "plugins": {
       "cordova-plugin-whitelist": {},
       "cordova-plugin-bluetoothclassic-serial": {},
-      "cordova-plugin-speechrecognition": {}
+      "cordova-plugin-speechrecognition": {},
+      "cordova-plugin-inappbrowser": {}
     },
     "platforms": [
       "android"

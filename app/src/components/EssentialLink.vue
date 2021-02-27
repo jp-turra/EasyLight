@@ -1,9 +1,8 @@
 <template>
   <q-item
     clickable
-    tag="a"
-    target="_blank"
-    :href="link"
+    v-ripple
+    @click="open(link, '_blank')"
   >
     <q-item-section
       v-if="icon"
@@ -43,6 +42,11 @@ export default {
     icon: {
       type: String,
       default: ''
+    }
+  },
+  methods: {
+    open (link, target) {
+      window.open(link, target)
     }
   }
 }
