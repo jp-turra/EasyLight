@@ -2,16 +2,15 @@
   <q-page class="column content-center q-ma-sm">
     <!-- Login -->
     <template v-if="getPage=='inicio'">
-      <div class="q-my-sm">
-        <q-img
-          src='C:\Users\Cliente\Desktop\Oficinas\EasyLight\src\statics\logo.png'
-          alt="Logo"
-        />
-      </div>
-      <div class="q-mt-xl q-my-sm">
-        <span class="text-h4">Seja bem vindo!</span>
-        <q-input class="q-my-sm" v-model="userName" type="text" placeholder="Insira seu nome aqui" />
-        <q-btn class="full-width" align="center" color="primary" label="ENTRAR" @click="login" />
+      <div>
+        <div class="q-my-sm text-center">
+          <q-img src='../statics/logo2.png' height="100%" width="80%" />
+        </div>
+        <div class="q-mt-xl q-my-sm">
+          <span class="text-h4">Seja bem vindo!</span>
+          <q-input class="q-my-sm" v-model="userName" type="text" placeholder="Insira seu nome aqui" />
+          <q-btn class="full-width" align="center" color="primary" label="ENTRAR" @click="login" />
+        </div>
       </div>
     </template>
     <!-- Paginal Inicial -->
@@ -61,7 +60,7 @@
       </div>
       <!-- Acionar comando de voz -->
       <div v-if="devices.length>0" class="row fixed-bottom full-width justify-center">
-        <q-btn round :class="listening ? 'pulse-button' : ''" align="center" class="q-mb-md" color="primary" icon="mic" :size="listening?'8vw':'6vw'" @click="listening? StopSpeechRecognition():StartSpeechRecognition()" />
+        <q-btn round :class="listening ? 'pulse-button' : ''" align="center" class="q-mb-md" color="primary" icon="mic" :size="listening?'8vw':'6vw'" @click="listening? StopSpeechRecognition():StartSpeechRecognition()" :disable="dispConectado ? false : true"/>
       </div>
     </template>
     <!-- Configuração de dispositivo / Bluetooh -->
@@ -109,7 +108,7 @@
         <q-card-section>
           <div class="ful-width" v-for="(comodo, index) in editarComodos" :key="index">
             <q-input class="text-h6" color="primary" v-model="comodo.name" type="text" label="Nome do Comodo">
-              <q-btn flat color="primary" icon="clear" size="4vw" @click="comodo.name=''" />
+              <q-btn flat color="primary" icon="delete" size="4vw" @click="excluirComodo(comodo)" />
             </q-input>
           </div>
         </q-card-section>
@@ -219,11 +218,11 @@ export default {
       comando = comando.split(" ")
       let action = comando.length>1 ? comando[0] : comando
       let dispName = comando.length>=2 ? comando.length>2 ? comando.slice(1).toString().replaceAll(","," ") : comando[1] : null
-      let device
-      if (dispName && dispName!="") device = this.getDeviceByName(dispName)
-      console.log(device)
-      if (!device) {alert("Nenhum dispositivo encontrado");return}
-      else this.enviarDado(device, action)
+      console.log(dispName)
+      if (dispName && dispName!="") action += "|"+this.getDeviceByName(dispName)
+      console.log(action)
+      if (!dispName) {alert("Nenhum dispositivo encontrado");return}
+      else this.enviarDado(this.dispConectado, action)
     },
     // ****************** BLEUTOOTH *************************
     abrirBluetooth () {
@@ -322,6 +321,7 @@ export default {
             this.$store.commit('addDevice', device)
             this.$store.commit('setPage', 'pageOne')
           }
+          bluetoothClassicSerial.write("00001101-0000-1000-8000-00805F9B34FB","limparEntrada||");
           return 'sucesso'
         },
         ()=>{console.log('Device ', device.id, ' disconnected');this.dispConectado=null;}
@@ -345,14 +345,20 @@ export default {
       }
     },
     getDeviceByName(info){
+      console.log('device: ', this.dispConectado)
       let match = null;
-      this.devices.forEach((device, index)=>{
-        for (let prop in Object(device)){
-          if (device[prop].toString().toLowerCase() == info.toString().toLowerCase()){
-            match = device
-          }
+      if(info.toLowerCase()=="um"||info.toLowerCase()=="um"||parseInt(info)==1) return 1
+      else if(info.toLowerCase()=="dois"||info.toLowerCase()=="dois"||parseInt(info)==2) return 2
+      else if(info.toLowerCase()=="três"||info.toLowerCase()=="três"||parseInt(info)==3) return 3
+      for (let props in this.dispConectado){
+        if (props=="comodos"){
+          this.dispConectado[props].forEach((val, index)=>{
+            if (val.name.toLowerCase() == info.toLowerCase()){
+              match = index+1
+            }
+          })
         }
-      })
+      }
       return match
     },
     hasDevice(device){
@@ -401,6 +407,13 @@ export default {
         }
       })
       return aux
+    },
+    excluirComodo(comodo){
+      let aux = []
+      this.editarComodos.forEach((val)=>{
+        if(comodo != val) aux.push(val)
+      })
+      this.editarComodos= aux
     }
   }
 }
