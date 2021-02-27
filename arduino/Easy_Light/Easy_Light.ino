@@ -5,8 +5,16 @@
 #define LAMP2 9
 #define LAMP3 10
 
+boolean state1 = false;
+boolean state2 = false;
+boolean state3 = false;
 boolean state = false;
-String incoming = "";
+
+String acao = "";
+String reset = "";
+String lampada = "";
+int contador = 0;
+
 SoftwareSerial bluetooth(RX, TX); // RX, TX
 
 void setup() {
@@ -25,41 +33,77 @@ void setup() {
 void loop (){
   if (bluetooth.available()){
      char dados = bluetooth.read();
-     if(String(dados)!= "|"){
-        incoming = incoming + String(dados);
+     if(reset!= "||"){
+        if (String(dados)!= "|"){
+          if (contador==0){
+            acao = acao + String(dados);
+          }else if (contador==1){
+            lampada = lampada + String(dados);         
+          }
+        }else {
+          reset = reset+String(dados);
+          contador++;
+        }
      }else {
-        Serial.println("Incoming data:" + incoming);
-        executar(incoming);
-        incoming = "";
+        Serial.println("Incoming data:" + acao + " " + lampada);
+        executar(acao, lampada);
+        resetar();
      }  
   }
 }
 
-void executar (String action){
+void resetar () {
+  contador = 0;
+  acao = "";
+  lampada ="";
+  reset = "";
+}
+void executar (String action, String device){
+  int num = definirLampada(device);
   if (action=="ligar"){
-    ligar();
+    ligar(num);
   }else if (action=="desligar"){
-    desligar();
+    desligar(num);
   }else if (action=="acionar"){
-    acionar();
+    acionar(num);
   }
 }
-void definirLampada (){
-  
+int definirLampada (String aux){
+  if (aux=="1"){
+    state = state1;
+    return 8;
+  }else if (aux=="2"){
+    state = state2;
+    return 9;
+  }else if (aux=="3"){
+    state = state3;
+    return 10;
+  }
 }
-void acionar (){
+void registrarEstado (int num, bool state){
+  if (num==LAMP1){
+    state1 = state;
+  }else if (num==LAMP2){
+    state2 = state;
+  }else if (num==LAMP3){
+    state3 = state;
+  }
+}
+void acionar (int num){
   if (state==true){
-    desligar();
+    desligar(num);
   }else if (state==false){
-    ligar();
+    ligar(num);
   }
 }
 
-void ligar(){
+void ligar(int num){
   state = true;
-  digitalWrite(LAMP1, HIGH);
+  digitalWrite(num, HIGH);
+  registrarEstado(num, state);
 }
-void desligar(){
+void desligar(int num){
   state = false;
-  digitalWrite(LAMP1, LOW);
+  digitalWrite(num, LOW);
+  registrarEstado(num, state);
 }

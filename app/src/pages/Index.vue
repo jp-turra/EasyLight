@@ -21,6 +21,7 @@
       </div>
       <!-- Lista de dispositivos disponíveis/pareados -->
       <q-list class="full-width q-ma-sm" bordered  v-for="(device, index) in devices" :key="index">
+        <q-btn class="full-width" color="primary" :label="dispConectado ? 'Conectado' : 'Conectar'" @click="conectarDispositivo(device)" :disable="dispConectado ? true : false"/>
         <q-item >
           <q-item-section class="col-2" avatar>
             <q-icon color="primary" name="light" />
@@ -28,8 +29,9 @@
           <q-item-section class="col-8">
             <span class="text-h6"> {{device.name}}<span style="font-size:13px;">{{device.id ? ' - '+device.id : ''}}</span> </span>
             <div v-if="device.comodos" class="full-width row">
-              <div class="col-12" v-for="(comodo, index) in device.comodos" :key="index">
-                <span>Comodo {{index}} - {{comodo.name}}</span>
+              <div class="col-12 q-mt-md" v-for="(comodo, index) in device.comodos" :key="index">
+                <span style="font-size:1.0rem" class="text-bold">Comodo {{index}} - {{comodo.name}}</span>
+                <div class="col-12"><q-btn class="full-width" color="secondary" icon="power" label="Acionar" @click="enviarDado(device,'acionar|'+(index+1))" :loading="loading" :disable="dispConectado ? false : true"/></div>
               </div>
             </div>
           </q-item-section>
@@ -37,7 +39,6 @@
             <q-icon size="8vw" v-ripple color="secondary" name="settings" @click="editarComodos=device.comodos||[];editarEquipamento=device;editarEquipamentoModal=true" />
           </q-item-section>
         </q-item>
-        <q-btn class="full-width" color="primary" :label="dispConectado ? 'Acionar' : 'Conectar'" @click="dispConectado ? enviarDado(device,'acionar') : conectarDispositivo(device)" />
       </q-list>
       <div v-if="comandoVoz" class="full-width q-my-xs">
         <q-separator color="secondary" />
@@ -154,7 +155,8 @@ export default {
       userName:'',
       editarEquipamentoModal:false,
       editarEquipamento:{},
-      editarComodos:[]
+      editarComodos:[],
+      loading:false
     }
   },
   created() {
@@ -287,20 +289,24 @@ export default {
       else{ response = await this.conectarDispositivo(device, false) }
       Loading.show({message:"Enviando comando "+dado})
       let timeout = this.dispConectado ? 0 : 5000
+      this.loading = true
+      if (this.dispConectado)  setTimeout(() => {
+        this.loading = false
+      }, this.dispConectado ? 200 : 5000);
       setTimeout(() => {
         console.log("response: ", response)
         if (response="sucesso" && this.dispConectado) {
           try{dado = new String(dado).toString()}
           catch{return}
           if (dado){
-            bluetoothClassicSerial.write("00001101-0000-1000-8000-00805F9B34FB", dado+"|", 
+            bluetoothClassicSerial.write("00001101-0000-1000-8000-00805F9B34FB", dado+"||", 
               ()=>{
                 console.log('dado a enviado: ', dado)
                 Loading.hide()
               }, 
               ()=>{console.log('n enviou');Loading.hide()}
             );
-          }  ;
+          }
         }
       }, timeout);
     },
