@@ -15,7 +15,7 @@
     </template>
     <!-- Paginal Inicial -->
     <template v-else-if="getPage=='pageOne'">
-      <div v-if="devices.length>0" class="full-width q-my-xs">
+      <div v-if="devices&&devices.length>0" class="full-width q-my-xs">
         <q-separator color="secondary" />
       </div>
       <!-- Lista de dispositivos disponíveis/pareados -->
@@ -55,11 +55,11 @@
         <q-separator color="secondary" />
       </div>
       <!-- Adicionar Dispositivo -->
-      <div class="q-mt-xl" :class="devices.length==0 ? 'fixed-center': ''">
+      <div class="q-mt-xl" :class="devices&&devices.length==0 ? 'fixed-center': ''">
         <q-btn class="full-width" color="green-8" icon="add" label="Adicionar Dispositivo" @click="abrirBluetooth"/>
       </div>
       <!-- Acionar comando de voz -->
-      <div v-if="devices.length>0" class="row fixed-bottom full-width justify-center">
+      <div v-if="devices&&devices.length>0" class="row fixed-bottom full-width justify-center">
         <q-btn round :class="listening ? 'pulse-button' : ''" align="center" class="q-mb-md" color="primary" icon="mic" :size="listening?'8vw':'6vw'" @click="listening? StopSpeechRecognition():StartSpeechRecognition()" :disable="dispConectado ? false : true"/>
       </div>
     </template>
@@ -70,7 +70,7 @@
           Estado do Bluetooth: <strong>{{getBluetoothState ? 'Ligado' : 'Desligado'}}</strong>
         </div>
         <q-separator class="q-mb-sm" color="black" />
-        <div class="q-ma-md" v-if="dispositivos.length!=0">
+        <div class="q-ma-md" v-if="dispositivos&&dispositivos.length!=0">
           <span class="text-bold q-mb-md">Dispositivos disponíveis: </span>
           <q-list bordered v-for="(device, index) in dispositivos" :key="index">
             <q-item v-ripple >
@@ -84,7 +84,7 @@
             </q-item>
           </q-list>
         </div>
-        <div v-else-if="dispositivos.length==0 && getBluetoothState">
+        <div v-else-if="dispositivos&&dispositivos.length==0 && getBluetoothState">
           <q-btn class="full-width q-ma-md" color="primary" icon="search" label="Procurar dispositivo" @click="procurarDispositivos" />
           <q-btn class="full-width q-ma-md" color="primary" label="Carregar lista de dispositivos pareados" @click="dispositivosPareados" />
         </div>
@@ -245,7 +245,7 @@ export default {
     dispositivosPareados(){
       bluetoothClassicSerial.list(
         (devices)=>{
-          if (devices.length) {  
+          if (devices && devices.length) {  
             devices.forEach((device)=>{
               this.dispositivos.push(device)
             })
@@ -274,6 +274,7 @@ export default {
       })
       let timeoutPromise = new Promise((resolve, reject)=>{setTimeout(() => {
         reject(null)
+        Loading.hide()
       }, 10000);})
       
       console.log('Start promisse')
@@ -363,12 +364,14 @@ export default {
     },
     hasDevice(device){
       let have = false
-      this.devices.forEach((val, index) => {
-        if (val.id == device.id) {
-          alert("Dispositivo já adicionado")
-          have = true
-        }
-      })
+      if(this.devices) {
+        this.devices.forEach((val, index) => {
+          if (val.id == device.id) {
+            alert("Dispositivo já adicionado")
+            have = true
+          }
+        })
+      }
       return have
     },
     salvarAlteracoesEquipamento(device, comodos){
