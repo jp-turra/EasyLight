@@ -12,16 +12,16 @@ var mutations = {
     state.recognitionStatus = status
   },
   setUserName (state, name) {
-    if (name) state.userName = name
+    state.userName = name
   },
   setPage (state, payload) {
-    if (payload) state.page = payload
+    state.page = payload
   },
   setBluetoothState (state, payload) {
-    if (payload) state.bluetoothState = payload
+    state.bluetoothState = payload
   },
   setDevice (state, payload) {
-    if (payload) state.device = payload
+    state.device = payload
   },
   addDevice (state, device) {
     console.log(device)
