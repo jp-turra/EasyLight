@@ -2,7 +2,7 @@
   <q-item
     clickable
     v-ripple
-    @click="open(link, '_blank')"
+    @click="link ? open(link, '_blank') : ''"
   >
     <q-item-section
       v-if="icon"
