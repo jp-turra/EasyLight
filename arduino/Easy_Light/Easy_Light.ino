@@ -45,7 +45,7 @@ void loop (){
           contador++;
         }
      }else {
-        Serial.println("Incoming data:" + acao + " " + lampada);
+        Serial.println("Infos recebidas:" + acao + " " + lampada);
         executar(acao, lampada);
         resetar();
      }  
@@ -66,6 +66,8 @@ void executar (String action, String device){
     desligar(num);
   }else if (action=="acionar"){
     acionar(num);
+  }else{
+    Serial.println("Comando inválido");
   }
 }
 int definirLampada (String aux){
@@ -78,6 +80,8 @@ int definirLampada (String aux){
   }else if (aux=="3"){
     state = state3;
     return 10;
+  }else {
+    Serial.println("Dispositivo inválido");
   }
 }
 void registrarEstado (int num, bool state){
