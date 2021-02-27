@@ -1,7 +1,7 @@
 {
   "name": "easylight",
-  "version": "0.0.1",
-  "description": "An app developed for a class project",
+  "version": "1.0.0",
+  "description":  "An application tha control the lights using bluetooth communication and also speech recognition",
   "productName": "EasyLight",
   "author": "jp-turra <joaoturra@ufpr.com.br>",
   "private": true,

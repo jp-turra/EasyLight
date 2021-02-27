@@ -118,7 +118,7 @@ module.exports = function (/* ctx */) {
       manifest: {
         name: 'EasyLight',
         short_name: 'EasyLight',
-        description: 'An app developed for a class project',
+        description: 'An application tha control the lights using bluetooth communication and also speech recognition',
         display: 'standalone',
         orientation: 'portrait',
         background_color: '#ffffff',
