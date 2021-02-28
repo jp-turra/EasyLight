@@ -74,6 +74,7 @@
 <script>
 /* eslint-disable */
 import EssentialLink from 'components/EssentialLink.vue'
+import { Dialog } from 'quasar'
 const linksData = [
   {
     title: 'Github',
@@ -124,7 +125,7 @@ export default {
               () => { this.$store.commit('setBluetoothState', false); this.$store.commit('setPage', 'pageOne') }
             )
           } else {
-            alert('Ative o Bluetooth')
+            Dialog.create({title:"Atenção", message:"Ative o seu bluetooth."})
             this.$store.commit('setPage', 'pageOne')
           }
         }

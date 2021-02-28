@@ -156,7 +156,8 @@ export default {
       editarEquipamentoModal:false,
       editarEquipamento:{},
       editarComodos:[],
-      loading:false
+      loading:false,
+      lastMAC:""
     }
   },
   created() {
@@ -219,7 +220,7 @@ export default {
       let action = comando.length>1 ? comando[0] : comando
       let dispName = comando.length>=2 ? comando.length>2 ? comando.slice(1).toString().replaceAll(","," ") : comando[1] : null
       if (dispName && dispName!="") action += "|"+this.getDeviceByName(dispName)
-      if (!dispName) {alert("Nenhum dispositivo encontrado");return}
+      if (!dispName) {Notify.create({type:"warning", message:"Nenhum dispositivo encontrado."});return}
       else this.enviarDado(this.dispConectado, action)
     },
     // ****************** BLEUTOOTH *************************
@@ -233,7 +234,7 @@ export default {
               () => { this.$store.commit('setBluetoothState', false); this.$store.commit('setPage', 'pageOne') }
             )
           } else {
-            alert('Ative o Bluetooth')
+            Dialog.create({title:"Atenção", message:"Ative o seu bluetooth."})
             this.$store.commit('setPage', 'pageOne')
           }
         }
@@ -301,6 +302,7 @@ export default {
       bluetoothSerial.connect(device.id, 
         (s)=>{
           console.log('Dispositivo', device.id, ' conectado.');
+          this.lastMAC = device.id
           let isDeviceSet = cadastro ? this.hasDevice(device) : true
           this.dispConectado = device
           if(cadastro || isDeviceSet)Loading.hide();
@@ -311,11 +313,11 @@ export default {
           bluetoothSerial.write("limparEntrada||");
           return 'sucesso'
         },
-        (e)=>{console.log('Device ', device.id, ' disconnected');this.dispConectado=null;}
+        (e)=>{console.log('Device ', device.id, ' disconnected');Dialog.create({title:"Alerta!",message:"O Dispositivo foi desconectado! Você deseja tentar conectar novamente?",ok:"Sim",cancel:"Não"}).onOk(()=>{this.conectarDispositivo(this.lastMAC, false)}).onCancel(()=>{this.lastMAC=""});this.dispConectado=null;}
       )
       setTimeout(() => {
         Loading.hide()
-        if (!this.dispConectado) {this.desconectarTodos();alert("Falha ao conectar com dispositivo, tente novamente.");}
+        if (!this.dispConectado) {this.desconectarTodos();Notify.create({type:"warning", message:"Falha ao conectar com dispositivo, tente novamente."})}
       }, 10000);
     },
     desconectarTodos(){
@@ -352,7 +354,7 @@ export default {
       if(this.devices) {
         this.devices.forEach((val, index) => {
           if (val.id == device.id) {
-            alert("Dispositivo já adicionado")
+            Notify.create({type:"warning", message:"Dispositivo já adicionado"})
             have = true
           }
         })
