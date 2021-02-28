@@ -4,7 +4,8 @@ const state = {
   bluetoothState: false,
   device: [],
   userName: null,
-  recognitionStatus: false
+  recognitionStatus: false,
+  autoLogin: false
 }
 
 var mutations = {
@@ -12,7 +13,11 @@ var mutations = {
     state.recognitionStatus = status
   },
   setUserName (state, name) {
+    state.autoLogin = true
     state.userName = name
+  },
+  setAutoLogin (state, autoLogin) {
+    state.autoLogin = autoLogin
   },
   setPage (state, payload) {
     state.page = payload
@@ -44,13 +49,17 @@ const getters = {
   },
   getDevice (state) {
     return state.device
+  },
+  getAutoLogin (state) {
+    return state.autoLogin
   }
 }
 
 const actions = {
   logOut (context) {
     context.commit('setUserName', null)
-    context.commit('setDevice', null)
+    context.commit('setDevice', [])
+    context.commit('setAutoLogin', false)
     context.commit('setPage', 'inicio')
   },
   updateDevice (context, payload) {
