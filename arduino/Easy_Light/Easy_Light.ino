@@ -60,6 +60,7 @@ void resetar () {
 }
 void executar (String action, String device){
   int num = definirLampada(device);
+  if (num==-1) { return; }
   if (action=="ligar"){
     ligar(num);
   }else if (action=="desligar"){
@@ -82,6 +83,7 @@ int definirLampada (String aux){
     return 10;
   }else {
     Serial.println("Dispositivo inválido");
+    return -1;
   }
 }
 void registrarEstado (int num, bool state){
