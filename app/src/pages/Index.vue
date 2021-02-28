@@ -258,7 +258,7 @@ export default {
       Loading.show({message: 'Procurando Dispositivos'})
       bluetoothSerial.discoverUnpaired(
         (devices) => {this.dispositivos=devices},
-        () => {Loading.hide();Notify.create({message:'Nenhum dispositivo encontrado.'})}
+        () => {Loading.hide()}
       )
       bluetoothSerial.setDeviceDiscoveredListener( (device) => {
         console.log('Device found: ', device)
@@ -267,6 +267,7 @@ export default {
       setTimeout(() => {
         Loading.hide();
         console.log('Available devices: ', this.dispositivos)
+        if (this.dispositivos.length<1) Notify.create({message:'Nenhum dispositivo encontrado.', type:"warning"})
         bluetoothSerial.clearDeviceDiscoveredListener();
         this.desconectarTodos()
       }, 20000);
@@ -302,6 +303,7 @@ export default {
       bluetoothSerial.connect(device.id, 
         (s)=>{
           console.log('Dispositivo', device.id, ' conectado.');
+          Notify.create({message:'Dispositivo '+ device.id+ ' conectado.',type:"positive"})
           this.lastMAC = device.id
           let isDeviceSet = cadastro ? this.hasDevice(device) : true
           this.dispConectado = device
@@ -313,7 +315,7 @@ export default {
           bluetoothSerial.write("limparEntrada||");
           return 'sucesso'
         },
-        (e)=>{console.log('Device ', device.id, ' disconnected');Dialog.create({title:"Alerta!",message:"O Dispositivo foi desconectado! Você deseja tentar conectar novamente?",ok:"Sim",cancel:"Não"}).onOk(()=>{this.conectarDispositivo(this.lastMAC, false)}).onCancel(()=>{this.lastMAC=""});this.dispConectado=null;}
+        (e)=>{console.log('Device ', device.id, ' disconnected');Dialog.create({title:"Alerta!",message:"O Dispositivo foi desconectado!"});this.dispConectado=null;}
       )
       setTimeout(() => {
         Loading.hide()
