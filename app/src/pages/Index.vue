@@ -70,6 +70,11 @@
           Estado do Bluetooth: <strong>{{getBluetoothState ? 'Ligado' : 'Desligado'}}</strong>
         </div>
         <q-separator class="q-mb-sm" color="black" />
+        <div>
+          <q-btn v-if="getBluetoothState" class="full-width q-ma-md" color="primary" icon="search" label="Procurar dispositivo" @click="procurarDispositivos" />
+          <q-btn v-if="dispositivos&&dispositivos.length==0 && getBluetoothState" class="full-width q-ma-md" color="primary" label="Carregar lista de dispositivos pareados" @click="dispositivosPareados" />
+        </div>
+        <q-separator class="q-mb-sm" color="black" />
         <div class="q-ma-md" v-if="dispositivos&&dispositivos.length!=0">
           <span class="text-bold q-mb-md">Dispositivos disponíveis: </span>
           <q-list bordered v-for="(device, index) in dispositivos" :key="index">
@@ -83,10 +88,6 @@
               </q-item-section>
             </q-item>
           </q-list>
-        </div>
-        <div v-else-if="dispositivos&&dispositivos.length==0 && getBluetoothState">
-          <q-btn class="full-width q-ma-md" color="primary" icon="search" label="Procurar dispositivo" @click="procurarDispositivos" />
-          <q-btn class="full-width q-ma-md" color="primary" label="Carregar lista de dispositivos pareados" @click="dispositivosPareados" />
         </div>
       </div>
     </template>
@@ -207,7 +208,6 @@ export default {
       )
     },
     StopSpeechRecognition(){
-      console.log('Stop recording')
       window.plugins.speechRecognition.stopListening(
         (success)=>{console.log("Recognition stopped");},
         ()=>{console.log("Error on stop recognition");},
@@ -218,9 +218,7 @@ export default {
       comando = comando.split(" ")
       let action = comando.length>1 ? comando[0] : comando
       let dispName = comando.length>=2 ? comando.length>2 ? comando.slice(1).toString().replaceAll(","," ") : comando[1] : null
-      console.log(dispName)
       if (dispName && dispName!="") action += "|"+this.getDeviceByName(dispName)
-      console.log(action)
       if (!dispName) {alert("Nenhum dispositivo encontrado");return}
       else this.enviarDado(this.dispConectado, action)
     },
@@ -249,32 +247,30 @@ export default {
             devices.forEach((device)=>{
               this.dispositivos.push(device)
             })
-            console.log(this.dispositivos)
           }
         },
-        ()=>{console.log('sem nada')}
+        ()=>{Notify.create({message:"Nenhum dispositivo já pareado foi encontrado.", type:"warning"})}
       )
     },
     async procurarDispositivos(){
+      this.dispositivos = []
       Loading.show({message: 'Procurando Dispositivos'})
-      let availableDevices = []
       bluetoothSerial.discoverUnpaired(
-        (devices) => { console.log('Dispositivos en', devices)},
-        () => {console.log('deu ruim');Loading.hide();Notify.create({message:'Nenhum dispositivo encontrado.'})}
+        (devices) => {this.dispositivos=devices},
+        () => {Loading.hide();Notify.create({message:'Nenhum dispositivo encontrado.'})}
       )
       bluetoothSerial.setDeviceDiscoveredListener( (device) => {
         console.log('Device found: ', device)
-        availableDevices.push(device)
+        this.dispositivos.push(device)
       })
       setTimeout(() => {
         Loading.hide();
-        console.log('Available devices: ', availableDevices)
+        console.log('Available devices: ', this.dispositivos)
         bluetoothSerial.clearDeviceDiscoveredListener();
         this.desconectarTodos()
-      }, 30000);
+      }, 20000);
     },
     async enviarDado(device,dado){
-      console.log(device)
       let response
       if (this.dispConectado&&device&&this.dispConectado.id==device.id) response="sucesso"
       else{ response = await this.conectarDispositivo(device, false) }
@@ -285,17 +281,16 @@ export default {
         this.loading = false
       }, this.dispConectado ? 200 : 5000);
       setTimeout(() => {
-        console.log("response: ", response)
         if (response="sucesso" && this.dispConectado) {
           try{dado = new String(dado).toString()}
           catch{return}
           if (dado){
             bluetoothSerial.write( dado+"||", 
               ()=>{
-                console.log('dado a enviado: ', dado)
+                console.log('dado enviado: ', dado)
                 Loading.hide()
               }, 
-              ()=>{console.log('n enviou');Loading.hide()}
+              ()=>{Notify.create({message:"Ocorreu um erro ao enviar a sua mensagem.", type:"negative"});Loading.hide()}
             );
           }
         }
@@ -305,7 +300,7 @@ export default {
       Loading.show({message:'Conectando com dispositivo '+ device.name})
       bluetoothSerial.connect(device.id, 
         (s)=>{
-          console.log('OK-CONNECT');
+          console.log('Dispositivo', device.id, ' conectado.');
           let isDeviceSet = cadastro ? this.hasDevice(device) : true
           this.dispConectado = device
           if(cadastro || isDeviceSet)Loading.hide();
@@ -337,7 +332,6 @@ export default {
       }
     },
     getDeviceByName(info){
-      console.log('device: ', this.dispConectado)
       let match = null;
       if(info.toLowerCase()=="um"||info.toLowerCase()=="um"||parseInt(info)==1) return 1
       else if(info.toLowerCase()=="dois"||info.toLowerCase()=="dois"||parseInt(info)==2) return 2
@@ -367,11 +361,7 @@ export default {
     },
     salvarAlteracoesEquipamento(device, comodos){
       device.comodos = []
-      comodos.forEach((val)=>{
-        if (val.name || val.name!="") device.comodos.push(val)
-      })
-
-      console.log("Equipamento salvo: ", device)
+      comodos.forEach((val)=>{ if (val.name || val.name!="") device.comodos.push(val) })
       this.$store.dispatch('updateDevice', device)
     },
     excluirDipositivo(device) {
