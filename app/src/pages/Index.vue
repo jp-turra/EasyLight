@@ -130,8 +130,8 @@
 
 <script>
 /* eslint-disable */
-import {  } from 'cordova-plugin-bluetoothclassic-serial/www/bluetoothClassicSerial.js'
-import { Dialog, Loading } from 'quasar'
+
+import { Dialog, Loading, Notify } from 'quasar'
 
 const option = {
   language:"pt-BR",
@@ -160,7 +160,7 @@ export default {
   },
   created() {
     this.userName = this.$store.getters.getUserName
-    if (this.userName) this.mudarTela('pageOne')
+    if (this.userName && this.$store.getters.getAutoLogin) this.mudarTela('pageOne')
   },
   mounted () {
     this.getLuzes()
@@ -186,9 +186,9 @@ export default {
       if(this.userName){
         this.mudarTela('pageOne') 
         this.$store.commit('setUserName', this.userName)
-      }else{
-        this.mudarTela('pageOne') 
-        this.$store.commit('setUserName', "Anônimo")
+        this.$store.commit('setAutoLogin', true)
+      }else {
+        Notify.create({message:"Insira um nome.", type:"warning"})
       }
     },
 
@@ -226,11 +226,11 @@ export default {
     },
     // ****************** BLEUTOOTH *************************
     abrirBluetooth () {
-      bluetoothClassicSerial.isEnabled(
+      bluetoothSerial.isEnabled(
         () => { this.$store.commit('setBluetoothState', true) },
         () => {
           if (this.$q.platform.is.android) {
-            bluetoothClassicSerial.enable(
+            bluetoothSerial.enable(
               () => { this.$store.commit('setBluetoothState', true) },
               () => { this.$store.commit('setBluetoothState', false); this.$store.commit('setPage', 'pageOne') }
             )
@@ -243,7 +243,7 @@ export default {
       this.$store.commit('setPage', 'bluetooth')
     },
     dispositivosPareados(){
-      bluetoothClassicSerial.list(
+      bluetoothSerial.list(
         (devices)=>{
           if (devices && devices.length) {  
             devices.forEach((device)=>{
@@ -256,31 +256,22 @@ export default {
       )
     },
     async procurarDispositivos(){
-      let response = 0
       Loading.show({message: 'Procurando Dispositivos'})
-      let promise = new Promise((resolve, reject)=>{
-        bluetoothClassicSerial.discoverUnpaired(
-          (devices) => {
-            console.log('Sem filtro', devices)
-            if (devices) {console.log(devices);resolve(devices)}
-            else {
-              //Notify.create({message:'Nenhum dispositivo encontrado.'}) 
-              Loading.hide()
-              reject(null)
-            }
-          },
-          () => {console.log('deu ruim');Loading.hide();}
-        )
+      let availableDevices = []
+      bluetoothSerial.discoverUnpaired(
+        (devices) => { console.log('Dispositivos en', devices)},
+        () => {console.log('deu ruim');Loading.hide();Notify.create({message:'Nenhum dispositivo encontrado.'})}
+      )
+      bluetoothSerial.setDeviceDiscoveredListener( (device) => {
+        console.log('Device found: ', device)
+        availableDevices.push(device)
       })
-      let timeoutPromise = new Promise((resolve, reject)=>{setTimeout(() => {
-        reject(null)
-        Loading.hide()
-      }, 10000);})
-      
-      console.log('Start promisse')
-      response = await Promise.race([promise, timeoutPromise])
-      if (response) console.log('response: ', response)
-      else console.log("Nulo")
+      setTimeout(() => {
+        Loading.hide();
+        console.log('Available devices: ', availableDevices)
+        bluetoothSerial.clearDeviceDiscoveredListener();
+        this.desconectarTodos()
+      }, 30000);
     },
     async enviarDado(device,dado){
       console.log(device)
@@ -299,7 +290,7 @@ export default {
           try{dado = new String(dado).toString()}
           catch{return}
           if (dado){
-            bluetoothClassicSerial.write("00001101-0000-1000-8000-00805F9B34FB", dado+"||", 
+            bluetoothSerial.write( dado+"||", 
               ()=>{
                 console.log('dado a enviado: ', dado)
                 Loading.hide()
@@ -312,8 +303,8 @@ export default {
     },
     async conectarDispositivo(device, cadastro){
       Loading.show({message:'Conectando com dispositivo '+ device.name})
-      bluetoothClassicSerial.connect(device.id, "00001101-0000-1000-8000-00805F9B34FB", 
-        ()=>{
+      bluetoothSerial.connect(device.id, 
+        (s)=>{
           console.log('OK-CONNECT');
           let isDeviceSet = cadastro ? this.hasDevice(device) : true
           this.dispConectado = device
@@ -322,10 +313,10 @@ export default {
             this.$store.commit('addDevice', device)
             this.$store.commit('setPage', 'pageOne')
           }
-          bluetoothClassicSerial.write("00001101-0000-1000-8000-00805F9B34FB","limparEntrada||");
+          bluetoothSerial.write("limparEntrada||");
           return 'sucesso'
         },
-        ()=>{console.log('Device ', device.id, ' disconnected');this.dispConectado=null;}
+        (e)=>{console.log('Device ', device.id, ' disconnected');this.dispConectado=null;}
       )
       setTimeout(() => {
         Loading.hide()
@@ -333,7 +324,7 @@ export default {
       }, 10000);
     },
     desconectarTodos(){
-      bluetoothClassicSerial.disconnect(()=>{console.log("Desconectado com sucesso")}, ()=>{console.log("Erro ao desconectar")});
+      bluetoothSerial.disconnect(()=>{console.log("Desconectado com sucesso")}, ()=>{console.log("Erro ao desconectar")});
     },
 
     // ****************** FUNCÕES GERAIS *************************

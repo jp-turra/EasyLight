@@ -115,11 +115,11 @@ export default {
   methods: {
     abrirBluetooth () {
       this.leftDrawerOpen = false
-      bluetoothClassicSerial.isEnabled(
+      bluetoothSerial.isEnabled(
         () => { this.$store.commit('setBluetoothState', true) },
         () => {
           if (this.$q.platform.is.android) {
-            bluetoothClassicSerial.enable(
+            bluetoothSerial.enable(
               () => { this.$store.commit('setBluetoothState', true) },
               () => { this.$store.commit('setBluetoothState', false); this.$store.commit('setPage', 'pageOne') }
             )
@@ -132,7 +132,7 @@ export default {
       this.$store.commit('setPage', 'bluetooth')
     },
     voltarInicio () {
-      bluetoothClassicSerial.disconnect(()=>{console.log("Desconectado com sucesso")}, ()=>{console.log("Erro ao desconectar")});
+      bluetoothSerial.disconnect(()=>{console.log("Desconectado com sucesso")}, ()=>{console.log("Erro ao desconectar")});
       this.$store.dispatch('logOut')
     }
   }
