@@ -131,7 +131,7 @@
 
 <script>
 /* eslint-disable */
-
+import * as bluetoothSerial from '../../node_modules/cordova-plugin-bluetoothclassic-serial/www/bluetoothClassicSerial'
 import { Dialog, Loading, Notify } from 'quasar'
 
 const option = {
@@ -165,6 +165,7 @@ export default {
     if (this.userName && this.$store.getters.getAutoLogin) this.mudarTela('pageOne')
   },
   mounted () {
+    console.log(bluetoothSerial)
     this.getLuzes()
   },
   computed: {
@@ -175,7 +176,6 @@ export default {
       return ''
     },
     getPage () {
-      // eslint-disable-next-line vue/no-side-effects-in-computed-properties
       return this.$store.getters.getPage || 'inicio'
     },
     getBluetoothState() {
@@ -224,38 +224,10 @@ export default {
       else this.enviarDado(this.dispConectado, action)
     },
     // ****************** BLEUTOOTH *************************
-    abrirBluetooth () {
-      bluetoothSerial.isEnabled(
-        () => { this.$store.commit('setBluetoothState', true) },
-        () => {
-          if (this.$q.platform.is.android) {
-            bluetoothSerial.enable(
-              () => { this.$store.commit('setBluetoothState', true) },
-              () => { this.$store.commit('setBluetoothState', false); this.$store.commit('setPage', 'pageOne') }
-            )
-          } else {
-            Dialog.create({title:"Atenção", message:"Ative o seu bluetooth."})
-            this.$store.commit('setPage', 'pageOne')
-          }
-        }
-      )
-      this.$store.commit('setPage', 'bluetooth')
-    },
-    dispositivosPareados(){
-      bluetoothSerial.list(
-        (devices)=>{
-          if (devices && devices.length) {  
-            devices.forEach((device)=>{
-              this.dispositivos.push(device)
-            })
-          }
-        },
-        ()=>{Notify.create({message:"Nenhum dispositivo já pareado foi encontrado.", type:"warning"})}
-      )
-    },
-    async procurarDispositivos(){
+    procurarDispositivos(){
       this.dispositivos = []
       Loading.show({message: 'Procurando Dispositivos'})
+      console.log('aquis')
       bluetoothSerial.discoverUnpaired(
         (devices) => {this.dispositivos=devices},
         () => {Loading.hide()}
@@ -271,6 +243,30 @@ export default {
         bluetoothSerial.clearDeviceDiscoveredListener();
         this.desconectarTodos()
       }, 20000);
+    },
+    async conectarDispositivo(device, cadastro){
+      Loading.show({message:'Conectando com dispositivo '+ device.name})
+      bluetoothSerial.connect(device.id, 
+        (s)=>{
+          console.log('Dispositivo', device.id, ' conectado.');
+          Notify.create({message:'Dispositivo '+ device.id+ ' conectado.',type:"positive"})
+          this.lastMAC = device.id
+          let isDeviceSet = cadastro ? this.hasDevice(device) : true
+          this.dispConectado = device
+          if(cadastro || isDeviceSet) Loading.hide();
+          if (cadastro && !isDeviceSet) {
+            this.$store.commit('addDevice', device)
+            this.$store.commit('setPage', 'pageOne')
+          }
+          bluetoothSerial.write("limparEntrada||");
+          return 'sucesso'
+        },
+        (e)=>{console.log('Device ', device.id, ' disconnected');Dialog.create({title:"Alerta!",message:"O Dispositivo foi desconectado!"});this.dispConectado=null;}
+      )
+      setTimeout(() => {
+        Loading.hide()
+        if (!this.dispConectado) {this.desconectarTodos();Notify.create({type:"warning", message:"Falha ao conectar com dispositivo, tente novamente."})}
+      }, 10000);
     },
     async enviarDado(device,dado){
       let response
@@ -298,34 +294,21 @@ export default {
         }
       }, timeout);
     },
-    async conectarDispositivo(device, cadastro){
-      Loading.show({message:'Conectando com dispositivo '+ device.name})
-      bluetoothSerial.connect(device.id, 
-        (s)=>{
-          console.log('Dispositivo', device.id, ' conectado.');
-          Notify.create({message:'Dispositivo '+ device.id+ ' conectado.',type:"positive"})
-          this.lastMAC = device.id
-          let isDeviceSet = cadastro ? this.hasDevice(device) : true
-          this.dispConectado = device
-          if(cadastro || isDeviceSet)Loading.hide();
-          if (cadastro && !isDeviceSet) {
-            this.$store.commit('addDevice', device)
-            this.$store.commit('setPage', 'pageOne')
-          }
-          bluetoothSerial.write("limparEntrada||");
-          return 'sucesso'
-        },
-        (e)=>{console.log('Device ', device.id, ' disconnected');Dialog.create({title:"Alerta!",message:"O Dispositivo foi desconectado!"});this.dispConectado=null;}
-      )
-      setTimeout(() => {
-        Loading.hide()
-        if (!this.dispConectado) {this.desconectarTodos();Notify.create({type:"warning", message:"Falha ao conectar com dispositivo, tente novamente."})}
-      }, 10000);
-    },
     desconectarTodos(){
       bluetoothSerial.disconnect(()=>{console.log("Desconectado com sucesso")}, ()=>{console.log("Erro ao desconectar")});
     },
-
+    dispositivosPareados(){
+      bluetoothSerial.list(
+        (devices)=>{
+          if (devices && devices.length) {  
+            devices.forEach((device)=>{
+              this.dispositivos.push(device)
+            })
+          }
+        },
+        (err)=>{console.log(err);Notify.create({message:"Nenhum dispositivo já pareado foi encontrado.", type:"warning"})}
+      )
+    },
     // ****************** FUNCÕES GERAIS *************************
     getLuzes () {
       if (this.devices){

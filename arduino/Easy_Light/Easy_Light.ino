@@ -33,7 +33,7 @@ void setup() {
 void loop (){
   if (bluetooth.available()){
      char dados = bluetooth.read();
-     if(reset!= "||"){
+     if(reset != "||"){
         if (String(dados)!= "|"){
           if (contador==0){
             acao = acao + String(dados);
